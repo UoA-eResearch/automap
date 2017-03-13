@@ -22,7 +22,7 @@
         <div class="file-field input-field">
           <div class="btn">
             <span>SeaFET file</span>
-            <input id="seafet" type="file" class="validate" name="seafet" accept=".xlsx" pattern="xlsx$" required />
+            <input id="seafet" type="file" class="validate" name="seafet" accept=".csv" pattern="csv$" required />
           </div>
           <div class="file-path-wrapper">
             <input class="file-path validate" type="text">
@@ -45,8 +45,8 @@
     <script>
       $("#seafet").change(function (e) {
         var ext = this.value.split('.').pop();
-        if (ext != 'xlsx') {
-          this.setCustomValidity("Only xlsx files allowed");
+        if (ext != 'csv') {
+          this.setCustomValidity("Only csv files allowed");
         } else {
           this.setCustomValidity("");
         }

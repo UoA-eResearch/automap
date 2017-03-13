@@ -21,12 +21,12 @@ def map(id):
 def do_upload():
     seafet = request.files.get('seafet')
     gpx = request.files.get('gpx')
-    check_ext(seafet.filename, ["xlsx"])
+    check_ext(seafet.filename, ["csv"])
     check_ext(gpx.filename, ["gpx"])
     mid = str(datetime.datetime.now()).replace(':', '_')
     path = "datasets/" + mid
     os.makedirs(path)
-    seafet.save(path + '/seafet.xlsx')
+    seafet.save(path + '/seafet.csv')
     gpx.save(path + '/tracks.gpx')
     return template('upload', mid=mid)
 
