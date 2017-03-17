@@ -1,0 +1,27 @@
+<html>
+  <body>
+    <canvas id="myCanvas" width="1000" height="1000"></canvas>
+  </body>
+  <script>
+    var c = document.getElementById("myCanvas");
+    var ctx = c.getContext("2d");
+    var OrRd = ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000'];
+
+    ctx.globalCompositeOperation = "screen";
+    // Create gradient
+    for (var x = 0; x < 500; x+=10) {
+      for (var y = 0; y < 500; y+=10) {
+        // x0 y0 r0 x1 y1 r1
+        var intensity = Math.floor(Math.random()*OrRd.length);
+        var color = OrRd[intensity];
+        var grd = ctx.createRadialGradient(x, y, 0, x, y, intensity*3);
+        grd.addColorStop(0,color);
+        grd.addColorStop(1,"transparent");
+
+        // Fill with gradient
+        ctx.fillStyle = grd;
+        ctx.fillRect(0,0,500,500);
+      }
+    }
+  </script>
+</html>
