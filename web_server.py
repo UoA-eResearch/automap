@@ -34,4 +34,7 @@ def do_upload():
 def server_static(filepath):
     return static_file(filepath, root='datasets')
 
-run(host='localhost', port=8080) 
+application = bottle.default_app()
+
+if __name__ == "__main__":
+    run(host='localhost', port=8080)
