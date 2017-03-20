@@ -57,7 +57,7 @@
         })
       };
 
-      var mid = window.location.pathname.replace("/map/", "");
+      var mid = window.location.pathname.substring(window.location.pathname.indexOf("/map/") + 5)
       var gpx = new ol.source.Vector({
         url: 'datasets/' + mid + '/tracks.gpx',
         format: new ol.format.GPX()
