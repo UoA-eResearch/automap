@@ -59,7 +59,7 @@
 
       var mid = window.location.pathname.replace("/map/", "");
       var gpx = new ol.source.Vector({
-        url: '/datasets/' + mid + '/tracks.gpx',
+        url: 'datasets/' + mid + '/tracks.gpx',
         format: new ol.format.GPX()
       });
       var vector = new ol.layer.Vector({
