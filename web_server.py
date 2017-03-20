@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from bottle import get, post, request, run, static_file, abort, template
+from bottle import get, post, request, run, static_file, abort, template, default_app
 import datetime
 import os
 
@@ -34,7 +34,7 @@ def do_upload():
 def server_static(filepath):
     return static_file(filepath, root='datasets')
 
-application = bottle.default_app()
+application = default_app()
 
 if __name__ == "__main__":
     run(host='localhost', port=8080)
