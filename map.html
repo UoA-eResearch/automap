@@ -59,7 +59,7 @@
 
       var mid = window.location.pathname.substring(window.location.pathname.indexOf("/map/") + 5)
       var gpx = new ol.source.Vector({
-        url: 'datasets/' + mid + '/tracks.gpx',
+        url: '../datasets/' + mid + '/tracks.gpx',
         format: new ol.format.GPX()
       });
       var vector = new ol.layer.Vector({
@@ -104,7 +104,7 @@
           console.log(timestampedLatLngs);
           timestamps.sort();
           console.log(timestamps.length + " timestamped gpx waypoints found");
-          $.get('/datasets/' + mid + '/seafet.csv', function(data) {
+          $.get('../datasets/' + mid + '/seafet.csv', function(data) {
             var arrays = $.csv.toArrays(data);
             var seafet = {};
             var imperfectMatches = 0;
