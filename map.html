@@ -184,7 +184,7 @@
                 title: "Temperature",
                 source: temp_data,
                 radius: 2,
-                visible: true
+                visible: false
             });
 
             map.addLayer(internal_ph_heatmap);
@@ -232,9 +232,9 @@
 
             console.log(minLng, maxLng, minLat, maxLat);
 
-            var canvasFunction = function(extent, resolution, pixelRatio, size, projection) {
+            var dotsCanvasFunction = function(extent, resolution, pixelRatio, size, projection) {
               console.log(resolution, pixelRatio, size);
-              var r = 1 / resolution * 3;
+              var r = 1 / resolution;
               console.log(r);
               var canvas = document.createElement('canvas');
               var context = canvas.getContext('2d');
@@ -249,8 +249,40 @@
               var mapOrigin = map.getPixelFromCoordinate([mapExtent[0], mapExtent[3]]);
               var delta = [mapOrigin[0]-canvasOrigin[0], mapOrigin[1]-canvasOrigin[1]];
 
-              for (var lng = minLng; lng < maxLng; lng += 3) {
-                for (var lat = minLat; lat < maxLat; lat += 3) {
+              for (var i in measuredPoints) {
+                var e = measuredPoints[i];
+                var temp = e.temp;
+                var scaledTemp = scaleToRange(temp, minTemp, maxTemp, 0, scheme.length) 
+                var color = scheme[Math.floor(scaledTemp)];
+                var pixel = map.getPixelFromCoordinate([e.pt[0], e.pt[1]]);
+                var cX = pixel[0] + delta[0], cY = pixel[1] + delta[1];
+                context.beginPath();
+                context.arc(cX, cY, r/2, 0, 2 * Math.PI, false);
+                context.fillStyle = color;
+                context.fill();
+              }
+              return canvas;
+            }
+
+            var interpCanvasFunction = function(extent, resolution, pixelRatio, size, projection) {
+              console.log(resolution, pixelRatio, size);
+              var r = 1 / resolution * 5;
+              console.log(r);
+              var canvas = document.createElement('canvas');
+              var context = canvas.getContext('2d');
+              var canvasWidth = size[0], canvasHeight = size[1];
+              canvas.setAttribute('width', canvasWidth);
+              canvas.setAttribute('height', canvasHeight);
+
+              // Canvas extent is different than map extent, so compute delta between 
+              // left-top of map and canvas extent.
+              var mapExtent = map.getView().calculateExtent(map.getSize())
+              var canvasOrigin = map.getPixelFromCoordinate([extent[0], extent[3]]);
+              var mapOrigin = map.getPixelFromCoordinate([mapExtent[0], mapExtent[3]]);
+              var delta = [mapOrigin[0]-canvasOrigin[0], mapOrigin[1]-canvasOrigin[1]];
+
+              for (var lng = minLng; lng < maxLng; lng += 5) {
+                for (var lat = minLat; lat < maxLat; lat += 5) {
                   var minD = Infinity;
                   var minE;
                   for (var i in measuredPoints) {
@@ -274,16 +306,26 @@
               return canvas;
             };
 
-            var canvasLayer = new ol.layer.Image({
-              title: 'Interpolated temp',
+            var dotsCanvasLayer = new ol.layer.Image({
+              title: 'Temperature - dots',
               source: new ol.source.ImageCanvas({
-                canvasFunction: canvasFunction,
+                canvasFunction: dotsCanvasFunction,
                 projection: 'EPSG:3857'
               }),
-              extent: [minLng, minLat, maxLng, maxLat]
+              //extent: [minLng, minLat, maxLng, maxLat]
             });
 
-            map.addLayer(canvasLayer);
+            var interpCanvasLayer = new ol.layer.Image({
+              title: 'Interpolated temperature',
+              source: new ol.source.ImageCanvas({
+                canvasFunction: interpCanvasFunction,
+                projection: 'EPSG:3857'
+              }),
+              //extent: [minLng, minLat, maxLng, maxLat]
+            });
+
+            map.addLayer(dotsCanvasLayer);
+            map.addLayer(interpCanvasLayer);
           });
         }
       });
