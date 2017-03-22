@@ -111,6 +111,7 @@
             var internal_ph_data = new ol.source.Vector();
             var external_ph_data = new ol.source.Vector();
             var temp_data = new ol.source.Vector();
+            var measuredPoints = [];
             for (var i = 8; i < arrays.length; i++) {
               var e = arrays[i];
               var date = e[1];
@@ -146,6 +147,7 @@
                 }
               }
               if (!matchingLatLng) continue;
+              measuredPoints.push({pt: matchingLatLng, internal_ph: internal_ph, external_ph: external_ph, temp: temp});
               matchingLatLng = new ol.geom.Point(matchingLatLng);
               var internal_ph_pt = new ol.Feature({
                   geometry: matchingLatLng,
@@ -188,6 +190,100 @@
             map.addLayer(internal_ph_heatmap);
             map.addLayer(external_ph_heatmap);
             map.addLayer(temp_heatmap);
+
+            var scheme = ['#d73027','#f46d43','#fdae61','#fee090','#ffffbf','#e0f3f8','#abd9e9','#74add1','#4575b4'];
+
+            function getCartesianDistance(a, b) {
+              var d = Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2));
+              return d;
+            }
+
+            function scaleToRange(x, min, max, newMin, newMax) {
+              return (x - min) / (max - min) * newMax + newMin;
+            }
+
+            var minLng = Infinity;
+            var maxLng = -Infinity;
+            var minLat = Infinity;
+            var maxLat = -Infinity;
+            var minTemp = Infinity;
+            var maxTemp = 0;
+            for (var i in measuredPoints) {
+              var p = measuredPoints[i];
+              if (p.pt[0] < minLng) {
+                minLng = p.pt[0];
+              }
+              if (p.pt[0] > maxLng) {
+                maxLng = p.pt[0];
+              }
+              if (p.pt[1] < minLat) {
+                minLat = p.pt[1];
+              }
+              if (p.pt[1] > maxLat) {
+                maxLat = p.pt[1];
+              }
+              if (p.temp < minTemp) {
+                minTemp = p.temp;
+              }
+              if (p.temp > maxTemp) {
+                maxTemp = p.temp;
+              }
+            }
+
+            console.log(minLng, maxLng, minLat, maxLat);
+
+            var canvasFunction = function(extent, resolution, pixelRatio, size, projection) {
+              console.log(resolution, pixelRatio, size);
+              var r = 1 / resolution * 3;
+              console.log(r);
+              var canvas = document.createElement('canvas');
+              var context = canvas.getContext('2d');
+              var canvasWidth = size[0], canvasHeight = size[1];
+              canvas.setAttribute('width', canvasWidth);
+              canvas.setAttribute('height', canvasHeight);
+
+              // Canvas extent is different than map extent, so compute delta between 
+              // left-top of map and canvas extent.
+              var mapExtent = map.getView().calculateExtent(map.getSize())
+              var canvasOrigin = map.getPixelFromCoordinate([extent[0], extent[3]]);
+              var mapOrigin = map.getPixelFromCoordinate([mapExtent[0], mapExtent[3]]);
+              var delta = [mapOrigin[0]-canvasOrigin[0], mapOrigin[1]-canvasOrigin[1]];
+
+              for (var lng = minLng; lng < maxLng; lng += 3) {
+                for (var lat = minLat; lat < maxLat; lat += 3) {
+                  var minD = Infinity;
+                  var minE;
+                  for (var i in measuredPoints) {
+                    var e = measuredPoints[i];
+                    var d = getCartesianDistance([lng, lat], [e.pt[0], e.pt[1]])
+                    if (d < minD) {
+                      minD = d;
+                      minE = e;
+                    }
+                  }
+                  var temp = minE.temp;
+                  var scaledTemp = scaleToRange(temp, minTemp, maxTemp, 0, scheme.length) 
+                  var color = scheme[Math.floor(scaledTemp)];
+                  var pixel = map.getPixelFromCoordinate([lng, lat]);
+                  var cX = pixel[0] + delta[0], cY = pixel[1] + delta[1];
+                  context.fillStyle = color;
+                  context.fillRect(cX, cY, r, r);
+                }
+              }
+
+              return canvas;
+            };
+
+            var canvasLayer = new ol.layer.Image({
+              title: 'Interpolated temp',
+              source: new ol.source.ImageCanvas({
+                canvasFunction: canvasFunction,
+                projection: 'EPSG:3857'
+              }),
+              extent: [minLng, minLat, maxLng, maxLat]
+            });
+
+            map.addLayer(canvasLayer);
           });
         }
       });

@@ -1,27 +1,100 @@
+<!DOCTYPE html>
 <html>
-  <body>
-    <canvas id="myCanvas" width="1000" height="1000"></canvas>
-  </body>
-  <script>
-    var c = document.getElementById("myCanvas");
-    var ctx = c.getContext("2d");
-    var OrRd = ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000'];
-
-    ctx.globalCompositeOperation = "screen";
-    // Create gradient
-    for (var x = 0; x < 500; x+=10) {
-      for (var y = 0; y < 500; y+=10) {
-        // x0 y0 r0 x1 y1 r1
-        var intensity = Math.floor(Math.random()*OrRd.length);
-        var color = OrRd[intensity];
-        var grd = ctx.createRadialGradient(x, y, 0, x, y, intensity*3);
-        grd.addColorStop(0,color);
-        grd.addColorStop(1,"transparent");
-
-        // Fill with gradient
-        ctx.fillStyle = grd;
-        ctx.fillRect(0,0,500,500);
+  <head>
+    <title>canvas test</title>
+    <link rel="stylesheet" href="https://openlayers.org/en/v4.0.1/css/ol.css" type="text/css">
+    <!-- The line below is only needed for old environments like Internet Explorer and Android 4.x -->
+    <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL"></script>
+    <script src="https://openlayers.org/en/v4.0.1/build/ol.js"></script>
+    <style>
+      html, body, #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
       }
-    }
-  </script>
+    </style>
+  </head>
+  <body>
+    <div id="map" class="map"></div>
+    <script>
+      var map = new ol.Map({
+        layers: [
+          new ol.layer.Tile({
+            source: new ol.source.OSM()
+          })
+        ],
+        target: 'map',
+        view: new ol.View({
+          center: ol.proj.transform([0.5, 0.5], 'EPSG:4326', 'EPSG:3857'),
+          zoom: 9
+        })
+      });
+
+      var scheme = ['#d73027','#f46d43','#fdae61','#fee090','#ffffbf','#e0f3f8','#abd9e9','#74add1','#4575b4'];
+      var measuredPoints = []
+      for (var i = 0; i < 100; i++) {
+        var lng = Math.random();
+        var lat = Math.random();
+        var intensity = Math.random()*scheme.length;
+        measuredPoints.push({lng: lng, lat: lat, intensity: intensity});
+      }
+
+      function getCartesianDistance(a, b) {
+        var d = Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2));
+        return d;
+      }
+
+      var canvasFunction = function(extent, resolution, pixelRatio, size, projection) {
+        console.log(resolution, pixelRatio, size);
+        var r = (1 / resolution) * 1500;
+        console.log(r);
+        var canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+        var canvasWidth = size[0], canvasHeight = size[1];
+        canvas.setAttribute('width', canvasWidth);
+        canvas.setAttribute('height', canvasHeight);
+
+        // Canvas extent is different than map extent, so compute delta between 
+        // left-top of map and canvas extent.
+        var mapExtent = map.getView().calculateExtent(map.getSize())
+        var canvasOrigin = map.getPixelFromCoordinate([extent[0], extent[3]]);
+        var mapOrigin = map.getPixelFromCoordinate([mapExtent[0], mapExtent[3]]);
+        var delta = [mapOrigin[0]-canvasOrigin[0], mapOrigin[1]-canvasOrigin[1]];
+
+        for (var lng = 0; lng < 1; lng += .01) {
+          for (var lat = 0; lat < 1; lat += .01) {
+            var minD = Infinity;
+            var minE;
+            for (var i in measuredPoints) {
+              var e = measuredPoints[i];
+              var d = getCartesianDistance([lng, lat], [e.lng, e.lat])
+              if (d < minD) {
+                minD = d;
+                minE = e;
+              }
+            }
+            var intensity = minE.intensity;
+            var color = scheme[Math.round(intensity)];
+            var point = ol.proj.transform([lng, lat], 'EPSG:4326', 'EPSG:3857');
+            var pixel = map.getPixelFromCoordinate(point);
+            var cX = pixel[0] + delta[0], cY = pixel[1] + delta[1];
+            context.fillStyle = color;
+            context.fillRect(cX, cY, r, r);
+          }
+        }
+
+        return canvas;
+      };
+
+      var canvasLayer = new ol.layer.Image({
+        source: new ol.source.ImageCanvas({
+          canvasFunction: canvasFunction,
+          projection: 'EPSG:3857'
+        })
+      });
+
+      map.addLayer(canvasLayer);
+    </script>
+  </body>
 </html>
