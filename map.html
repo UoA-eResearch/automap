@@ -206,8 +206,7 @@
             var maxLng = -Infinity;
             var minLat = Infinity;
             var maxLat = -Infinity;
-            var minTemp = Infinity;
-            var maxTemp = 0;
+            var ranges = {internal_ph: {min: Infinity, max: 0}, external_ph: {min: Infinity, max: 0}, temp: {min: Infinity, max: 0}}
             for (var i in measuredPoints) {
               var p = measuredPoints[i];
               if (p.pt[0] < minLng) {
@@ -222,17 +221,19 @@
               if (p.pt[1] > maxLat) {
                 maxLat = p.pt[1];
               }
-              if (p.temp < minTemp) {
-                minTemp = p.temp;
-              }
-              if (p.temp > maxTemp) {
-                maxTemp = p.temp;
+              for (var measure in ranges) {
+                if (p[measure] < ranges[measure].min) {
+                  ranges[measure].min = p[measure];
+                }
+                if (p[measure] > ranges[measure].max) {
+                  ranges[measure].max = p[measure];
+                }
               }
             }
 
             console.log(minLng, maxLng, minLat, maxLat);
 
-            var dotsCanvasFunction = function(extent, resolution, pixelRatio, size, projection) {
+            var dotsCanvasFunction = function(variable, extent, resolution, pixelRatio, size, projection) {
               console.log(resolution, pixelRatio, size);
               var r = 1 / resolution;
               console.log(r);
@@ -249,11 +250,14 @@
               var mapOrigin = map.getPixelFromCoordinate([mapExtent[0], mapExtent[3]]);
               var delta = [mapOrigin[0]-canvasOrigin[0], mapOrigin[1]-canvasOrigin[1]];
 
+              var minV = ranges[variable].min;
+              var maxV = ranges[variable].max;
+
               for (var i in measuredPoints) {
                 var e = measuredPoints[i];
-                var temp = e.temp;
-                var scaledTemp = scaleToRange(temp, minTemp, maxTemp, 0, scheme.length) 
-                var color = scheme[Math.floor(scaledTemp)];
+                var v = e[variable];
+                var scaledV = scaleToRange(v, minV, maxV, 0, scheme.length) 
+                var color = scheme[Math.floor(scaledV)];
                 var pixel = map.getPixelFromCoordinate([e.pt[0], e.pt[1]]);
                 var cX = pixel[0] + delta[0], cY = pixel[1] + delta[1];
                 context.beginPath();
@@ -264,7 +268,7 @@
               return canvas;
             }
 
-            var interpCanvasFunction = function(extent, resolution, pixelRatio, size, projection) {
+            var interpCanvasFunction = function(variable, extent, resolution, pixelRatio, size, projection) {
               console.log(resolution, pixelRatio, size);
               var r = 1 / resolution * 5;
               console.log(r);
@@ -281,6 +285,9 @@
               var mapOrigin = map.getPixelFromCoordinate([mapExtent[0], mapExtent[3]]);
               var delta = [mapOrigin[0]-canvasOrigin[0], mapOrigin[1]-canvasOrigin[1]];
 
+              var minV = ranges[variable].min;
+              var maxV = ranges[variable].max;
+
               for (var lng = minLng; lng < maxLng; lng += 5) {
                 for (var lat = minLat; lat < maxLat; lat += 5) {
                   var minD = Infinity;
@@ -293,9 +300,9 @@
                       minE = e;
                     }
                   }
-                  var temp = minE.temp;
-                  var scaledTemp = scaleToRange(temp, minTemp, maxTemp, 0, scheme.length) 
-                  var color = scheme[Math.floor(scaledTemp)];
+                  var v = minE[variable];
+                  var scaledV = scaleToRange(v, minV, maxV, 0, scheme.length) 
+                  var color = scheme[Math.floor(scaledV)];
                   var pixel = map.getPixelFromCoordinate([lng, lat]);
                   var cX = pixel[0] + delta[0], cY = pixel[1] + delta[1];
                   context.fillStyle = color;
@@ -306,26 +313,58 @@
               return canvas;
             };
 
-            var dotsCanvasLayer = new ol.layer.Image({
+            var iphDotsCanvasLayer = new ol.layer.Image({
+              title: 'Internal pH - dots',
+              source: new ol.source.ImageCanvas({
+                canvasFunction: dotsCanvasFunction.bind(null, 'internal_ph')
+              }),
+              visible: false
+            });
+
+            var iphInterpCanvasLayer = new ol.layer.Image({
+              title: 'Interpolated internal pH',
+              source: new ol.source.ImageCanvas({
+                canvasFunction: interpCanvasFunction.bind(null, 'internal_ph')
+              }),
+              visible: false
+            });
+
+            var ephDotsCanvasLayer = new ol.layer.Image({
+              title: 'External pH - dots',
+              source: new ol.source.ImageCanvas({
+                canvasFunction: dotsCanvasFunction.bind(null, 'external_ph')
+              }),
+              visible: false
+            });
+
+            var ephInterpCanvasLayer = new ol.layer.Image({
+              title: 'Interpolated external pH',
+              source: new ol.source.ImageCanvas({
+                canvasFunction: interpCanvasFunction.bind(null, 'external_ph')
+              }),
+              visible: false
+            });
+
+            var tempDotsCanvasLayer = new ol.layer.Image({
               title: 'Temperature - dots',
               source: new ol.source.ImageCanvas({
-                canvasFunction: dotsCanvasFunction,
-                projection: 'EPSG:3857'
-              }),
-              //extent: [minLng, minLat, maxLng, maxLat]
+                canvasFunction: dotsCanvasFunction.bind(null, 'temp')
+              })
             });
 
-            var interpCanvasLayer = new ol.layer.Image({
+            var tempInterpCanvasLayer = new ol.layer.Image({
               title: 'Interpolated temperature',
               source: new ol.source.ImageCanvas({
-                canvasFunction: interpCanvasFunction,
-                projection: 'EPSG:3857'
-              }),
-              //extent: [minLng, minLat, maxLng, maxLat]
+                canvasFunction: interpCanvasFunction.bind(null, 'temp')
+              })
             });
 
-            map.addLayer(dotsCanvasLayer);
-            map.addLayer(interpCanvasLayer);
+            map.addLayer(iphDotsCanvasLayer);
+            map.addLayer(iphInterpCanvasLayer);
+            map.addLayer(ephDotsCanvasLayer);
+            map.addLayer(ephInterpCanvasLayer);
+            map.addLayer(tempDotsCanvasLayer);
+            map.addLayer(tempInterpCanvasLayer);
           });
         }
       });
